@@ -11,7 +11,8 @@ Key features
 - Compact icon-only toolbar in the dock, with clear tooltips and small padding for space efficiency.
 
 Screenshots
-- The project icon and UI screenshots should appear here. The icon shown at the top is the plugin logo (icon.png).
+![Screenshot 1](./screenshots/screenshot1.png)
+![Screenshot 2](./screenshots/screenshot2.png)
 
 Installation
 1. Download the latest release ZIP from https://github.com/hobbybwanali/RasterNinja/releases or clone the repository.
