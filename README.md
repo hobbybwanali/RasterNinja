@@ -1,6 +1,6 @@
 # RasterNinja
 
-![RasterNinja logo](icons/icon_main.svg)
+![RasterNinja logo](./icon.png)
 
 RasterNinja is a QGIS plugin that simplifies raster/DEM workflows. Draw a polygon or use an existing polygon mask to clip/trim rasters and get a temporary clipped raster added to the project. RasterNinja is intended as a foundation for more raster tools (merging, format conversion, DEM calculations, classification toggles).
 
@@ -11,11 +11,11 @@ Key features
 - Compact icon-only toolbar in the dock, with clear tooltips and small padding for space efficiency.
 
 Screenshots
-- The project icon and UI screenshots should appear here. The icon shown at the top is the plugin logo (icons/icon_main.svg).
+- The project icon and UI screenshots should appear here. The icon shown at the top is the plugin logo (icon.png).
 
 Installation
 1. Download the latest release ZIP from https://github.com/hobbybwanali/RasterNinja/releases or clone the repository.
-2. Copy the `RasterNinja` folder into your QGIS profile's `python/plugins` directory (for example: `%APPDATA%\QGIS\QGIS3\profiles\default\python\plugins\`).
+2. Copy the `RasterNinja` folder into your QGIS profile's `python/plugins` directory (for example: `%APPDATA%\\QGIS\\QGIS3\\profiles\\default\\python\\plugins\\`).
 3. Restart QGIS.
 4. Enable RasterNinja from Plugins > Manage and Install Plugins.
 
@@ -34,7 +34,7 @@ Contributing
 Contributions, bug reports, and feature requests are welcome. Please open issues or pull requests on the GitHub repository.
 
 License
-Specify your preferred license here (e.g., MIT). If you want a license added, tell me which one and I will add a LICENSE file.
+This project is licensed under the MIT License — see the LICENSE file for details.
 
 Quick QA checklist
 1. Restart QGIS and enable RasterNinja in the Plugin Manager.
