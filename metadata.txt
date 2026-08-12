@@ -1,0 +1,15 @@
+[general]
+name=RasterNinja
+version=1.0.0
+qgisMinimumVersion=3.0
+qgisMaximumVersion=3.99
+author=Hobby Bwanali
+email=hobbybwanali@gmail.com
+description=RasterNinja is a compact, extensible QGIS plugin for raster & DEM workflows — draw a polygon or use an existing mask layer to crop/clip rasters, with temporary outputs by default. Designed to be extended with merging, conversions, and DEM analytics.
+about=RasterNinja provides an easy, focused workflow for raster clipping and DEM processing. Primary features: interactive draw-mode clipping, mask-layer clipping, temporary outputs, compact dock UI with icon-only tool buttons, and well-structured plugin metadata for publishing. Future features planned: raster merging, raster→vector conversion, DEM statistics, and format conversions.
+icon=icon.png
+homepage=https://github.com/hobbybwanali/RasterNinja
+repository=https://github.com/hobbybwanali/RasterNinja
+tracker=https://github.com/hobbybwanali/RasterNinja/issues
+category=Raster
+experimental=false
