@@ -1,46 +1,33 @@
 # RasterNinja
 
-![RasterNinja logo](./icon.png)
+RasterNinja is a QGIS plugin to simplify raster workflows: draw a polygon or use an existing polygon mask (shapefile) to clip rasters, and obtain a temporary clipped raster added to your project. RasterNinja is a foundation for more raster tools like merging, format conversion, and DEM processing.
 
-RasterNinja is a QGIS plugin that simplifies raster/DEM workflows. Draw a polygon or use an existing polygon mask to clip/trim rasters and get a temporary clipped raster added to the project. RasterNinja is intended as a foundation for more raster tools (merging, format conversion, DEM calculations, classification toggles).
+Author: Hobby Bwanali <hobbybwanali@gmail.com>
+GitHub: https://github.com/hobbybwanali
 
-Key features
-- Draw-mode polygon clipping: draw a polygon directly on the map canvas, finish the polygon, and clip the selected raster.
-- Mask-layer clipping: choose an existing polygon vector layer (shapefile or memory layer) as the mask to clip a raster.
-- Temporary outputs by default: when no output file path is supplied the plugin adds the clipped raster as a temporary layer so users can save it if desired.
-- Compact icon-only toolbar in the dock, with clear tooltips and small padding for space efficiency.
+Installation:
+1. Copy the `RasterNinja` folder into your QGIS profile's `python/plugins` directory.
+2. Restart QGIS.
+3. Enable RasterNinja from Plugins > Manage and Install Plugins.
 
-Screenshots
-![Screenshot 1](./screenshots/screenshot1.png)
-![Screenshot 2](./screenshots/screenshot2.png)
+Usage:
+- Select a raster layer from the dropdown or load one in the project.
+- Optionally select a mask polygon layer from the Mask layer dropdown, or draw a polygon using the Draw button.
+- Click Finish polygon to close the polygon, then click Apply crop.
+- If no output path is specified, the result is added as a temporary raster layer to the project. Save manually from the Layers panel if you want a permanent file.
 
-Installation
-1. Download the latest release ZIP from https://github.com/hobbybwanali/RasterNinja/releases or clone the repository.
-2. Copy the `RasterNinja` folder into your QGIS profile's `python/plugins` directory (for example: `%APPDATA%\\QGIS\\QGIS3\\profiles\\default\\python\\plugins\\`).
-3. Restart QGIS.
-4. Enable RasterNinja from Plugins > Manage and Install Plugins.
+Notes:
+- RasterNinja expects georeferenced rasters with a valid CRS.
+- The plugin is designed to be extended with more raster processing features.
 
-Usage
-1. Open RasterNinja using the toolbar button (the Ninja icon) — this toggles the dock panel.
-2. Ensure a georeferenced raster (GeoTIFF) is loaded; it will appear in the "DEM layer" dropdown.
-3. By default the "Polygon" mode is selected: use Draw → left-click on the canvas to add vertices. Use Finish to close the polygon and Apply to clip.
-4. Alternatively choose "Mask layer", select a polygon vector layer from the Mask dropdown and click Apply.
-5. If you left the Output file blank, the clipped raster will be added as a temporary layer to the project. Save it from the Layers panel to persist.
-
-Author
-- Hobby Bwanali — hobbybwanali@gmail.com
-- GitHub: https://github.com/hobbybwanali
-
-Contributing
-Contributions, bug reports, and feature requests are welcome. Please open issues or pull requests on the GitHub repository.
-
-License
-This project is licensed under the MIT License — see the LICENSE file for details.
-
-Quick QA checklist
+Quick QA checklist (run this after installing/updating):
 1. Restart QGIS and enable RasterNinja in the Plugin Manager.
 2. Open the RasterNinja panel (toolbar button). Confirm the Ninja icon and title appear in the panel header.
-3. Load GeoTIFF rasters. Confirm they appear in the DEM dropdown.
-4. Draw & finish a polygon, then Apply. Confirm temporary output and success message.
+3. Load two GeoTIFF rasters into the project. Confirm they appear in the DEM dropdown.
+4. With a raster visible and selected, ensure the "Polygon" radio is selected and the Draw/Finish/Clear buttons are enabled.
+5. Draw a polygon with at least 3 points, click Finish polygon, then click Apply crop. Expect a temporary raster layer to appear in the Layers panel. Check for a green success message in the plugin panel.
+6. Toggle the radio to "Mask layer", choose an existing polygon vector from the Mask dropdown, click Apply crop and confirm a temporary output appears.
+7. With a raster un-ticked (hidden) in the Layers panel, confirm the plugin disables polygon tools and shows a warning.
+8. Try saving the temporary clipped raster from the Layers panel to a GeoTIFF and re-load it to confirm validity.
 
-If you need alternative text or extra screenshots added, provide the images and I will add them to `doc/` and embed them in the README.
+If any step fails, copy the plugin log or traceback and send it here (the Python traceback shown in the QGIS log). I'll help interpret and fix it.

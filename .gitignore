@@ -1,0 +1,39 @@
+# --- Python compiled/cache files (excluded per QGIS repo checklist) ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Packaging artifacts (build output, not source) ---
+/build/
+/dist/
+*.egg-info/
+*.zip
+
+# --- Qt Designer / resource compilation artifacts ---
+# If you ever add a resources.qrc, only ignore the COMPILED output, not the .qrc itself.
+resources_rc.py
+*_rc.py
+
+# --- Editor / IDE clutter ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- OS clutter ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Virtual environments (if you use one for local testing/linting) ---
+.venv/
+venv/
+env/
+
+# --- Test/lint caches ---
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Local QGIS plugin symlink/deploy helpers (if you use pb_tool or plugin_upload configs with secrets) ---
+pb_tool.cfg.local

@@ -1,4 +1,4 @@
-import os
+﻿import os
 import re
 
 from qgis.PyQt.QtCore import Qt
@@ -14,6 +14,7 @@ from qgis.PyQt.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QRadioButton,
     QToolButton,
     QVBoxLayout,
     QWidget,
@@ -299,4 +300,347 @@ class DemCropDockWidget(QWidget):
             self.name_edit.setText(default_name)
         self.plugin.show_status("Selected DEM: {}".format(selected_layer.name()))
 
-        ... (truncated) ...
+    def build_default_name(self, layer):
+        sanitized = re.sub(r"[^A-Za-z0-9_.-]+", "_", layer.name()).strip("_")
+        if not sanitized:
+            sanitized = "dem"
+        return "{}_clipped.tif".format(sanitized)
+
+    def select_output_file(self):
+        default_path = self.output_edit.text().strip() or self.default_output_path()
+        file_name, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save clipped DEM",
+            default_path,
+            "GeoTIFF (*.tif *.tiff);;All files (*)",
+        )
+        if file_name:
+            self.output_edit.setText(self.ensure_tif_extension(file_name))
+
+    def default_output_path(self):
+        selected = self.selected_dem()
+        if selected is not None:
+            folder = os.path.expanduser("~")
+            return os.path.join(folder, self.build_default_name(selected))
+        return os.path.join(os.path.expanduser("~"), "clipped_dem.tif")
+
+    @staticmethod
+    def ensure_tif_extension(path):
+        if not path:
+            return path
+        lower = path.lower()
+        if lower.endswith(".tif") or lower.endswith(".tiff"):
+            return path
+        return path + ".tif"
+
+    def refresh_layers(self):
+        self.layer_combo.clear()
+        self.mask_combo.clear()
+
+        raster_layers = self.plugin.get_dem_layers()
+        for layer in raster_layers:
+            self.layer_combo.addItem(layer.name(), layer)
+
+        # populate polygon/vector mask layers
+        mask_layers = self.plugin.get_mask_layers()
+        self.mask_combo.addItem("(none)", None)
+        for layer in mask_layers:
+            self.mask_combo.addItem(layer.name(), layer)
+
+        if self.layer_combo.count() == 0:
+            self.plugin.show_status("No raster layers found in the project. Load a georeferenced raster (GeoTIFF).", "warning")
+            self.apply_button.setEnabled(False)
+            self.draw_button.setEnabled(False)
+            self.finish_button.setEnabled(False)
+            return
+
+        self.apply_button.setEnabled(True)
+        self.draw_button.setEnabled(True)
+        self.finish_button.setEnabled(True)
+        if self.name_edit.text().strip() == "":
+            self.name_edit.setText(self.build_default_name(self.selected_dem()))
+
+        # ensure buttons reflect current mode and layer visibility immediately
+        try:
+            self.on_mode_changed()
+        except Exception:
+            pass
+
+    def selected_dem(self):
+        index = self.layer_combo.currentIndex()
+        if index < 0:
+            return None
+        return self.layer_combo.itemData(index)
+
+    def on_mode_changed(self, checked=None):
+        """Radio signal wrapper: forward to plugin's handler."""
+        try:
+            self.plugin.on_mode_changed()
+        except Exception:
+            pass
+
+
+class DemCropPlugin:
+    def __init__(self, iface):
+        self.iface = iface
+        self.plugin_dir = os.path.dirname(__file__)
+        self.actions = []
+        self.current_geometry = None
+        self._previous_map_tool = None
+        self.toolbar = None
+        self.dock = None
+        self.dock_widget = None
+        self.map_tool = None
+        self.action = None
+        self.initGui()
+
+    def initGui(self):
+        if self.toolbar is not None:
+            return
+
+        self.toolbar = self.iface.addToolBar("RasterNinja")
+        self.toolbar.setObjectName("RasterNinja")
+
+        self.dock = QDockWidget("RasterNinja", self.iface.mainWindow())
+        self.dock.setObjectName("rasterninja_dock")
+        try:
+            self.dock.setAllowedAreas(Qt.AllDockWidgetAreas)
+            self.dock.setFeatures(QDockWidget.DockWidgetClosable | QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetFloatable)
+        except Exception:
+            pass
+        self.dock_widget = DemCropDockWidget(self.iface, self)
+        self.dock.setWidget(self.dock_widget)
+        self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
+        self.dock.setVisible(False)
+
+        self.map_tool = DemCropMapTool(self.iface.mapCanvas(), self)
+
+        self.action = QAction("RasterNinja", self.iface.mainWindow())
+        # prefer a specific main icon if provided; fall back to common names
+        icon_candidates = [
+            os.path.join(self.plugin_dir, 'icon_main.svg'),
+            os.path.join(self.plugin_dir, 'icon.svg'),
+            os.path.join(self.plugin_dir, 'icon.png'),
+            os.path.join(self.plugin_dir, 'icon_main.png'),
+        ]
+        for p in icon_candidates:
+            if os.path.exists(p):
+                self.action.setIcon(QIcon(p))
+                break
+        self.action.setToolTip("Open the DEM crop tool")
+        self.action.triggered.connect(self.toggle_dock)
+        self.iface.addToolBarIcon(self.action)
+        self.iface.addPluginToMenu("&RasterNinja", self.action)
+        self.actions.append(self.action)
+
+        QgsProject.instance().layersAdded.connect(self._refresh_layers_for_project_change)
+        QgsProject.instance().layersRemoved.connect(self._refresh_layers_for_project_change)
+
+    def tr(self, text):
+        return text
+
+    def _refresh_layers_for_project_change(self, *args):
+        if self.dock_widget is not None:
+            self.dock_widget.refresh_layers()
+
+    def on_mode_changed(self):
+        """Handle enabling/disabling controls when the user switches between
+        polygon drawing mode and mask-layer mode.
+        """
+        mode_polygon = False
+        try:
+            mode_polygon = self.dock_widget.mode_polygon.isChecked()
+        except Exception:
+            pass
+
+        if mode_polygon:
+            # polygon mode — enable draw tools only when a visible raster is selected
+            try:
+                self.dock_widget.mask_combo.setEnabled(False)
+                sel = self.dock_widget.selected_dem()
+                visible = sel in list(self.iface.mapCanvas().layers()) if sel is not None else False
+                self.dock_widget.draw_button.setEnabled(visible)
+                self.dock_widget.finish_button.setEnabled(visible)
+                self.dock_widget.clear_button.setEnabled(visible)
+            except Exception:
+                pass
+        else:
+            # mask mode — disable polygon tools
+            try:
+                self.dock_widget.mask_combo.setEnabled(True)
+                self.dock_widget.draw_button.setEnabled(False)
+                self.dock_widget.finish_button.setEnabled(False)
+                self.dock_widget.clear_button.setEnabled(False)
+            except Exception:
+                pass
+
+    def get_dem_layers(self):
+        raster_layers = []
+        seen = set()
+        for layer in list(QgsProject.instance().mapLayers().values()) + list(self.iface.mapCanvas().layers()):
+            if id(layer) in seen:
+                continue
+            seen.add(id(layer))
+            if isinstance(layer, QgsRasterLayer) and layer.isValid() and layer.crs().isValid():
+                raster_layers.append(layer)
+        return raster_layers
+
+    def get_mask_layers(self):
+        vector_layers = []
+        seen = set()
+        for layer in list(QgsProject.instance().mapLayers().values()) + list(self.iface.mapCanvas().layers()):
+            if id(layer) in seen:
+                continue
+            seen.add(id(layer))
+            # polygon vector layers (memory/shapefile)
+            try:
+                if layer.type() == QgsMapLayerType.VectorLayer and layer.isValid() and layer.wkbType() in (3, 5, 6, 7, 31):
+                    vector_layers.append(layer)
+            except Exception:
+                # fallback: accept valid vector layers
+                try:
+                    if layer.type() == QgsMapLayerType.VectorLayer and layer.isValid():
+                        vector_layers.append(layer)
+                except Exception:
+                    pass
+        return vector_layers
+
+    def toggle_dock(self):
+        self.dock.setVisible(not self.dock.isVisible())
+        if self.dock.isVisible():
+            self.dock_widget.refresh_layers()
+            self.show_status("Draw a polygon over the DEM and finish it before clipping.")
+
+    def start_drawing(self):
+        dem_layer = self.dock_widget.selected_dem()
+        if dem_layer is None:
+            self.show_status("Add a DEM raster layer before starting the crop.", "error")
+            return
+
+        self.current_geometry = None
+        self._previous_map_tool = self.iface.mapCanvas().mapTool()
+        self.map_tool.activate()
+        self.iface.mapCanvas().setMapTool(self.map_tool)
+        self.show_status("Click to add vertices. Double-click or use Finish polygon to complete the crop area.")
+
+    def finish_current_polygon(self):
+        if self.map_tool.active:
+            self.map_tool.finish_polygon()
+            return
+        if self.current_geometry is None:
+            self.show_status("No polygon is active yet. Draw a crop polygon first.", "error")
+
+    def clear_polygon(self):
+        self.current_geometry = None
+        self.map_tool.reset_capture()
+        self.show_status("Crop polygon cleared. Draw a new polygon to continue.")
+
+    def show_status(self, message, level="info"):
+        """Set a short status message on the dock widget and style it by severity.
+        level: one of 'info', 'warning', 'error', 'success'.
+        """
+        if getattr(self, "dock_widget", None) is None:
+            return
+        label = self.dock_widget.status_label
+        label.setText(message)
+        if level == "error":
+            label.setStyleSheet("padding:6px; color:#721c24; background:#f8d7da; border-radius:4px;")
+        elif level == "warning":
+            label.setStyleSheet("padding:6px; color:#856404; background:#fff3cd; border-radius:4px;")
+        elif level == "success":
+            label.setStyleSheet("padding:6px; color:#155724; background:#d4edda; border-radius:4px;")
+        else:
+            label.setStyleSheet("padding:6px; color:#1a1a1a; background:#f2f2f2; border-radius:4px;")
+    def apply_crop(self):
+        dem_layer = self.dock_widget.selected_dem()
+        if dem_layer is None:
+            self.show_status("Select a valid DEM raster.", "error")
+            return
+
+        if self.current_geometry is None:
+            self.show_status("No crop polygon was created yet. Draw a polygon first.", "error")
+            return
+
+        if processing is None:
+            self.show_status("QGIS processing is not available in this environment.", "error")
+            return
+
+        output_path = self.dock_widget.output_edit.text().strip()
+        if not output_path:
+            output_path = self.dock_widget.default_output_path()
+        output_path = self.dock_widget.ensure_tif_extension(output_path)
+        output_dir = os.path.dirname(output_path) or os.getcwd()
+        if not os.path.isdir(output_dir):
+            try:
+                os.makedirs(output_dir)
+            except OSError:
+                self.show_status("The output folder does not exist and could not be created.", "error")
+                return
+
+        if os.path.exists(output_path):
+            reply = QMessageBox.question(
+                self.iface.mainWindow(),
+                "Overwrite output",
+                "The target file already exists. Replace it?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if reply != QMessageBox.Yes:
+                return
+
+        mask_layer = QgsVectorLayer(
+            "Polygon?crs={}".format(dem_layer.crs().authid()),
+            "dem_crop_mask",
+            "memory",
+        )
+        provider = mask_layer.dataProvider()
+        feature = QgsFeature()
+        feature.setGeometry(self.current_geometry)
+        provider.addFeatures([feature])
+        mask_layer.updateExtents()
+
+        try:
+            params = {
+                "INPUT": dem_layer,
+                "MASK": mask_layer,
+                "CROP_TO_CUTLINE": True,
+                "KEEP_RESOLUTION": True,
+                "TARGET_CRS": dem_layer.crs(),
+                "NODATA": None,
+                "OUTPUT": output_path,
+            }
+            processing.run("gdal:cliprasterbymasklayer", params)
+        except Exception as exc:  # pragma: no cover
+            QMessageBox.critical(
+                self.iface.mainWindow(),
+                "Crop failed",
+                "The DEM could not be clipped.\n\n{}".format(exc),
+            )
+            self.show_status("Raster clipping failed. Check the DEM layer and polygon geometry.", "error")
+            return
+        finally:
+            QgsProject.instance().removeMapLayer(mask_layer.id())
+
+        new_layer = QgsRasterLayer(output_path, os.path.basename(output_path))
+        if new_layer.isValid():
+            QgsProject.instance().addMapLayer(new_layer)
+            self.show_status("DEM clipped successfully. Output saved to: {}".format(output_path), "success")
+        else:
+            self.show_status("Crop finished but the output raster could not be loaded.", "error")
+
+        if self._previous_map_tool is not None and self._previous_map_tool is not self.map_tool:
+            self.iface.mapCanvas().setMapTool(self._previous_map_tool)
+        self._previous_map_tool = None
+
+        self.map_tool.reset_capture()
+        self.current_geometry = None
+
+    def unload(self):
+        for action in self.actions:
+            self.iface.removePluginMenu("&RasterNinja", action)
+            self.iface.removeToolBarIcon(action)
+        self.iface.mainWindow().removeDockWidget(self.dock)
+
+
+def classFactory(iface):
+    return DemCropPlugin(iface)
