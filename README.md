@@ -1,26 +1,34 @@
-# RasterNinja
+<p align="center">
+  <img src="icon.png" alt="RasterNinja logo" width="160"/>
+</p>
+
+<h1 align="center">RasterNinja</h1>
 
 RasterNinja is a QGIS plugin to simplify raster workflows: draw a polygon or use an existing polygon mask (shapefile) to clip rasters, and obtain a temporary clipped raster added to your project. RasterNinja is a foundation for more raster tools like merging, format conversion, and DEM processing.
 
 Author: Hobby Bwanali <hobbybwanali@gmail.com>
 GitHub: https://github.com/hobbybwanali
 
-Installation:
+## Screenshot
+
+![RasterNinja panel cropping a DEM in QGIS](screenshots/screenshot1.png)
+
+## Installation
 1. Copy the `RasterNinja` folder into your QGIS profile's `python/plugins` directory.
 2. Restart QGIS.
 3. Enable RasterNinja from Plugins > Manage and Install Plugins.
 
-Usage:
+## Usage
 - Select a raster layer from the dropdown or load one in the project.
 - Optionally select a mask polygon layer from the Mask layer dropdown, or draw a polygon using the Draw button.
 - Click Finish polygon to close the polygon, then click Apply crop.
 - If no output path is specified, the result is added as a temporary raster layer to the project. Save manually from the Layers panel if you want a permanent file.
 
-Notes:
+## Notes
 - RasterNinja expects georeferenced rasters with a valid CRS.
 - The plugin is designed to be extended with more raster processing features.
 
-Quick QA checklist (run this after installing/updating):
+## Quick QA checklist (run this after installing/updating)
 1. Restart QGIS and enable RasterNinja in the Plugin Manager.
 2. Open the RasterNinja panel (toolbar button). Confirm the Ninja icon and title appear in the panel header.
 3. Load two GeoTIFF rasters into the project. Confirm they appear in the DEM dropdown.
