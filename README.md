@@ -4,7 +4,7 @@
 
 <h1 align="center">RasterNinja</h1>
 
-RasterNinja is a QGIS plugin to simplify raster workflows: draw a polygon or use an existing polygon mask (shapefile) to clip rasters, and obtain a temporary clipped raster added to your project. RasterNinja is a foundation for more raster tools like merging, format conversion, and DEM processing.
+RasterNinja is a QGIS plugin to simplify raster workflows: draw a polygon or use an existing polygon mask (shapefile) to clip rasters, and obtain a temporary clipped raster added to your project. RasterNinja is a foundation for more raster tools like merging, format conversion, and DEM processing
 
 Author: Hobby Bwanali <hobbybwanali@gmail.com>
 GitHub: https://github.com/hobbybwanali
