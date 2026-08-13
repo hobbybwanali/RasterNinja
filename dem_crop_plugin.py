@@ -29,12 +29,21 @@ from qgis.core import (
     QgsFeature,
     QgsGeometry,
     QgsMapLayerType,
+    QgsMessageLog,
     QgsPointXY,
     QgsProject,
     QgsRasterLayer,
     QgsVectorLayer,
 )
 from qgis.gui import QgsMapToolEmitPoint, QgsRubberBand
+
+
+def _log_warning(message):
+    """Send a non-fatal error to the QGIS Log Messages panel instead of
+    swallowing it silently. Used for optional/best-effort UI updates where
+    failure shouldn't interrupt the user, but should still be visible for
+    debugging (RasterNinja tab in Log Messages)."""
+    QgsMessageLog.logMessage(str(message), "RasterNinja", level=Qgis.Warning)
 
 try:
     from qgis import processing
@@ -216,8 +225,8 @@ class DemCropDockWidget(QWidget):
         # ensure mask dropdown is disabled when polygon mode is the default
         try:
             self.mask_combo.setEnabled(not self.mode_polygon.isChecked())
-        except Exception:
-            pass
+        except Exception as exc:
+            _log_warning(f"Could not set initial mask_combo state: {exc}")
 
         self.layout.addWidget(group)
 
@@ -363,8 +372,8 @@ class DemCropDockWidget(QWidget):
         # ensure buttons reflect current mode and layer visibility immediately
         try:
             self.on_mode_changed()
-        except Exception:
-            pass
+        except Exception as exc:
+            _log_warning(f"Could not refresh mode state on init: {exc}")
 
     def selected_dem(self):
         index = self.layer_combo.currentIndex()
@@ -376,8 +385,8 @@ class DemCropDockWidget(QWidget):
         """Radio signal wrapper: forward to plugin's handler."""
         try:
             self.plugin.on_mode_changed()
-        except Exception:
-            pass
+        except Exception as exc:
+            _log_warning(f"Mode-change handler failed: {exc}")
 
 
 class DemCropPlugin:
@@ -406,8 +415,8 @@ class DemCropPlugin:
         try:
             self.dock.setAllowedAreas(Qt.AllDockWidgetAreas)
             self.dock.setFeatures(QDockWidget.DockWidgetClosable | QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetFloatable)
-        except Exception:
-            pass
+        except Exception as exc:
+            _log_warning(f"Could not configure dock widget areas/features: {exc}")
         self.dock_widget = DemCropDockWidget(self.iface, self)
         self.dock.setWidget(self.dock_widget)
         self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
@@ -450,8 +459,8 @@ class DemCropPlugin:
         mode_polygon = False
         try:
             mode_polygon = self.dock_widget.mode_polygon.isChecked()
-        except Exception:
-            pass
+        except Exception as exc:
+            _log_warning(f"Could not read mode_polygon state: {exc}")
 
         if mode_polygon:
             # polygon mode — enable draw tools only when a visible raster is selected
@@ -462,8 +471,8 @@ class DemCropPlugin:
                 self.dock_widget.draw_button.setEnabled(visible)
                 self.dock_widget.finish_button.setEnabled(visible)
                 self.dock_widget.clear_button.setEnabled(visible)
-            except Exception:
-                pass
+            except Exception as exc:
+                _log_warning(f"Could not update polygon-mode controls: {exc}")
         else:
             # mask mode — disable polygon tools
             try:
@@ -471,8 +480,8 @@ class DemCropPlugin:
                 self.dock_widget.draw_button.setEnabled(False)
                 self.dock_widget.finish_button.setEnabled(False)
                 self.dock_widget.clear_button.setEnabled(False)
-            except Exception:
-                pass
+            except Exception as exc:
+                _log_warning(f"Could not update mask-mode controls: {exc}")
 
     def get_dem_layers(self):
         raster_layers = []
@@ -501,8 +510,8 @@ class DemCropPlugin:
                 try:
                     if layer.type() == QgsMapLayerType.VectorLayer and layer.isValid():
                         vector_layers.append(layer)
-                except Exception:
-                    pass
+                except Exception as exc:
+                    _log_warning(f"Skipped an unreadable layer while listing vector layers: {exc}")
         return vector_layers
 
     def toggle_dock(self):
